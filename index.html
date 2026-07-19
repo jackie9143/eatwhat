@@ -183,8 +183,6 @@
         const resultCard = document.getElementById('resultCard');
         const resultName = document.getElementById('resultName');
         const resultPrice = document.getElementById('resultPrice');
-        const resultLoc = document.getElementById('resultLoc');
-        const resultTaste = document.getElementById('resultTaste');
         const countdown = document.getElementById('countdown');
         const retryBtn = document.getElementById('retryBtn');
         const settingsToggle = document.getElementById('settingsToggle');
@@ -342,8 +340,6 @@
                 resultCard.classList.remove('hidden');
                 resultName.textContent = randomItem.name;
                 resultPrice.textContent = randomItem.budget;
-                resultLoc.textContent = randomItem.location;
-                resultTaste.textContent = randomItem.taste;
                 counter++;
                 if (counter > 10) {
                     clearInterval(anim);
@@ -383,8 +379,6 @@
             const randomItem = currentPool[Math.floor(Math.random() * currentPool.length)];
             resultName.textContent = randomItem.name;
             resultPrice.textContent = randomItem.budget;
-            resultLoc.textContent = randomItem.location;
-            resultTaste.textContent = randomItem.taste;
             
             document.getElementById('countdownZone').innerHTML = `潜意识测试中... <span id="countdown" class="text-red-500 font-bold">3</span> 秒内可点击 <button id="retryBtn" class="bg-neutral-800 hover:bg-neutral-700 px-2 py-0.5 rounded text-white ml-1">不行，重抽</button>`;
             document.getElementById('retryBtn').addEventListener('click', arguments.callee);
