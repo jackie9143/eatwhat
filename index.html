@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>南华野狗专用·今天吃什么</title>
+    <!-- 引入外部样式库，保证代码精简防卡死 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-neutral-900 text-white min-h-screen flex flex-col items-center justify-center p-4">
+
+    <!-- 主面板 -->
+    <div class="w-full max-w-md bg-neutral-800 rounded-xl p-6 shadow-xl border border-neutral-700 space-y-6">
+        <h1 class="text-3xl font-bold text-center text-orange-500">今天吃什么？</h1>
+        
+       <!-- 核心过滤器（两个大开关 + 一个10元步进的预算拉动条） -->
+        <div class="bg-neutral-700/50 p-4 rounded-lg space-y-5">
+            <!-- 预算条：上限改为 200，步进设置为 10 -->
+            <div>
+              <label class="text-base text-neutral-300 flex justify-between items-center font-medium">
+                    <span>预算上限:</span> 
+                    <span class="text-2xl font-black text-orange-500"><span id="budgetValue">100</span> 元</span>
+                </label>
+                <input type="range" id="budgetSlider" min="10" max="200" step="10" value="100" class="w-full accent-orange-500 mt-2 h-2 bg-neutral-600 rounded-lg cursor-pointer">
+            </div>
+            
+<!-- 两个核心策略开关：卡片平分一行 + 标题字号放大加粗 -->
+            <div class="grid grid-cols-2 gap-3 border-t border-neutral-700 pt-4">
+                <!-- 不上火大开关 -->
+                <label class="flex items-center justify-center p-4 rounded-xl border transition-all cursor-pointer select-none bg-neutral-800 border-neutral-600 has-[:checked]:bg-orange-600 has-[:checked]:border-orange-500">
+                    <span class="text-lg font-bold text-white">🔥 不上火</span>
+                    <input type="checkbox" id="noHot" class="hidden">
+                </label>
+                
+                <!-- 东莞大开关 -->
+                <label class="flex items-center justify-center p-4 rounded-xl border transition-all cursor-pointer select-none bg-neutral-800 border-neutral-600 has-[:checked]:bg-orange-600 has-[:checked]:border-orange-500">
+                    <span class="text-lg font-bold text-white">📍 只选东莞</span>
+                    <input type="checkbox" id="onlyDongguan" class="hidden">
+                </label>
+            </div>
+
+        <!-- 抽取大按钮 -->
+        <button id="startBtn" class="w-full bg-orange-600 hover:bg-orange-700 active:scale-95 transition-all text-white font-bold py-4 rounded-lg text-lg shadow-lg">
+            🎲 开始抽取
+        </button>
+
+        <!-- 抽取结果显示区 -->
+        <div id="resultCard" class="hidden bg-neutral-950 p-4 rounded-lg border border-orange-500/30 text-center space-y-2">
+            <div id="resultName" class="text-2xl font-bold text-orange-400">-</div>
+<div class="text-base font-medium text-neutral-200 py-1">
+                预算: <span id="resultPrice" class="text-orange-400 font-bold">-</span> 元 | 
+                地点: <span id="resultLoc" class="text-emerald-400 font-bold">-</span> | 
+                口味: <span id="resultTaste" class="text-sky-400 font-bold">-</span>
+            </div>
+            <div id="countdownZone" class="text-xs text-neutral-500 pt-2 border-t border-neutral-800">
+                潜意识测试中... <span id="countdown" class="text-red-500 font-bold">3</span> 秒内可点击 
+                <button id="retryBtn" class="bg-neutral-800 hover:bg-neutral-700 px-2 py-0.5 rounded text-white ml-1">不行，重抽</button>
+            </div>
+        </div>
+
+        <!-- 下拉翻盖折叠按钮 -->
+        <div class="text-center pt-2">
+            <button id="settingsToggle" class="text-xs text-neutral-500 hover:text-neutral-300">⚙️ 管理食物库 </button>
+        </div>
+    </div>
+
+    <!-- 隐藏的“空调遥控器”翻盖内部 -->
+    <div id="flipCover" class="hidden w-full max-w-md mt-4 bg-neutral-800 rounded-xl p-6 border border-neutral-700 space-y-4">
+        <h3 class="text-lg font-bold text-neutral-300">🍱 食物库动态管理</h3>
+        
+        <!-- 表单：必须包含定义的所有数据项 -->
+        <div class="space-y-2 text-black text-sm">
+            <div class="grid grid-cols-2 gap-2">
+                <input type="text" id="foodName" placeholder="食物名称" class="p-2 rounded bg-neutral-200">
+                <input type="number" id="foodPrice" placeholder="预算(纯数字)" class="p-2 rounded bg-neutral-200">
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+                <select id="foodLoc" class="p-2 rounded bg-neutral-200">
+                    <option value="新塘">地点：新塘</option>
+                    <option value="东莞">地点：东莞</option>
+                    <option value="石滩">地点：石滩</option>
+                </select>
+                <select id="foodTaste" class="p-2 rounded bg-neutral-200">
+                    <option value="正常">口味：正常</option>
+                    <option value="清淡">口味：清淡</option>
+                    <option value="上火">口味：上火</option>
+                </select>
+            </div>
+            <button id="addBtn" class="w-full bg-neutral-700 text-white hover:bg-neutral-600 py-2 rounded text-sm font-bold">+添加到食物库</button>
+        </div>
+
+        <hr class="border-neutral-700 my-2">
+
+        <!-- 硬核 JSON 文本框 -->
+        <div>
+            <label class="block text-xs text-neutral-400 mb-1">JSON 原始数据（刷新不丢，支持复制/粘贴覆盖）：</label>
+            <textarea id="jsonData" rows="8" class="w-full bg-neutral-950 border border-neutral-700 rounded p-2 text-xs font-mono text-emerald-400 focus:outline-none focus:border-orange-500"></textarea>
+        </div>
+
+        <div class="flex space-x-2 text-xs">
+            <button id="applyBtn" class="flex-1 bg-orange-600 hover:bg-orange-700 py-2 rounded font-bold">💾 应用更改</button>
+            <button id="copyBtn" class="bg-neutral-700 hover:bg-neutral-600 px-3 py-2 rounded">📋 一键复制</button>
+        </div>
+    </div>
+
+    <!-- 核心大脑 JavaScript 逻辑 -->
+    <script>
+        // 1. 初始化预设底料（符合你的数据结构要求）
+        const defaultRestaurants = [
+  {
+    "id": 1,
+    "name": "茅山大道面",
+    "budget": 30,
+    "location": "新塘",
+    "taste": "上火"
+  },
+  {
+    "id": 2,
+    "name": "大润发",
+    "budget": 30,
+    "location": "新塘",
+    "taste": "正常"
+  },
+  {
+    "id": 3,
+    "name": "沙浦牛肉火锅",
+    "budget": 100,
+    "location": "新塘",
+    "taste": "正常"
+  },
+  {
+    "id": 4,
+    "name": "肥宝牛腩粉",
+    "budget": 30,
+    "location": "新塘",
+    "taste": "清淡"
+  },
+  {
+    "id": 5,
+    "name": "普宁海鲜捞面",
+    "budget": 30,
+    "location": "新塘",
+    "taste": "清淡"
+  },
+  {
+    "id": 6,
+    "name": "永成糖水店",
+    "budget": 40,
+    "location": "东莞",
+    "taste": "正常"
+  },
+  {
+    "id": 7,
+    "name": "砂锅粥",
+    "budget": 50,
+    "location": "新塘",
+    "taste": "清淡"
+  },
+  {
+    "id": 8,
+    "name": "江湾粥底火锅",
+    "budget": 70,
+    "location": "石滩",
+    "taste": "正常"
+  },
+  {
+    "id": 9,
+    "name": "绿湖腌面",
+    "budget": 20,
+    "location": "石滩",
+    "taste": "正常"
+  }
+];
+
+        let restaurants = [];
+        let timer = null;
+        let currentPool = [];
+
+        // 绑定主面板元素
+        const budgetSlider = document.getElementById('budgetSlider');
+        const budgetValue = document.getElementById('budgetValue');
+        const noHot = document.getElementById('noHot');
+        const onlyDongguan = document.getElementById('onlyDongguan');
+        const startBtn = document.getElementById('startBtn');
+        const resultCard = document.getElementById('resultCard');
+        const resultName = document.getElementById('resultName');
+        const resultPrice = document.getElementById('resultPrice');
+        const resultLoc = document.getElementById('resultLoc');
+        const resultTaste = document.getElementById('resultTaste');
+        const countdown = document.getElementById('countdown');
+        const retryBtn = document.getElementById('retryBtn');
+        const settingsToggle = document.getElementById('settingsToggle');
+        const flipCover = document.getElementById('flipCover');
+        const jsonData = document.getElementById('jsonData');
+        const applyBtn = document.getElementById('applyBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        
+        // 绑定录入表单元素
+        const foodName = document.getElementById('foodName');
+        const foodPrice = document.getElementById('foodPrice');
+        const foodLoc = document.getElementById('foodLoc');
+        const foodTaste = document.getElementById('foodTaste');
+        const addBtn = document.getElementById('addBtn');
+
+        // 初始化加载数据
+        function init() {
+            // 1. 确保滑块在每次刷新页面时都安全地锁死在 100 初始值
+            if (budgetSlider) {
+                budgetSlider.value = 100;
+                budgetValue.textContent = 100;
+            }
+
+            // 2. 原本的数据读取逻辑
+            const savedData = localStorage.getItem('restaurant_library');
+            if (savedData) {
+                try {
+                    restaurants = JSON.parse(savedData);
+                } catch (e) {
+                    restaurants = [...defaultRestaurants];
+                }
+            } else {
+                restaurants = [...defaultRestaurants];
+                localStorage.setItem('restaurant_library', JSON.stringify(restaurants));
+            }
+            updateJsonTextArea();
+        }
+
+        function updateJsonTextArea() {
+            jsonData.value = JSON.stringify(restaurants, null, 2);
+        }
+
+        function saveToLocal() {
+            localStorage.setItem('restaurant_library', JSON.stringify(restaurants));
+            updateJsonTextArea();
+        }
+
+        // 翻盖折叠交互
+        settingsToggle.addEventListener('click', () => {
+            flipCover.classList.toggle('hidden');
+        });
+
+        // 动态预算数字同步
+        budgetSlider.addEventListener('input', (e) => {
+            budgetValue.textContent = e.target.value;
+        });
+
+        // 快捷临时加菜（录入时完全包含 4 项数据）
+        addBtn.addEventListener('click', () => {
+            const name = foodName.value.trim();
+            const price = parseInt(foodPrice.value);
+            if (!name || isNaN(price)) {
+                alert('请填写正确的食物名称和数字预算！');
+                return;
+            }
+            const newFood = {
+                id: restaurants.length > 0 ? Math.max(...restaurants.map(r => r.id)) + 1 : 1,
+                name: name,
+                budget: price,
+                location: foodLoc.value,
+                taste: foodTaste.value
+            };
+            restaurants.push(newFood);
+            saveToLocal(); // 保存锁死在前端本地
+            
+            foodName.value = '';
+            foodPrice.value = '';
+            alert(`已成功添加：[${foodLoc.value}] ${name}，已同步锁定到本地。`);
+        });
+
+// 升级版：自适应 JSON 块应用更改（兼容普通 JS 代码复制）
+        applyBtn.addEventListener('click', () => {
+            let rawValue = jsonData.value.trim();
+            
+            // 如果用户把末尾的分号 ; 也拷进来了，自动把它切掉
+            if (rawValue.endsWith(';')) {
+                rawValue = rawValue.slice(0, -1);
+            }
+
+            try {
+                let parsed;
+                // 核心黑魔法：利用 new Function 动态解析松散的 JS 数组结构
+                // 这样即使属性名没有双引号（如 id: 1），也能像浏览器执行代码一样完美识别！
+                if (rawValue.startsWith('[') || rawValue.startsWith('{')) {
+                    parsed = new Function(`return ${rawValue};`)();
+                } else {
+                    throw new Error();
+                }
+
+                if (Array.isArray(parsed)) {
+                    restaurants = parsed;
+                    saveToLocal(); // 锁死到 LocalStorage
+                    
+                    // 顺手帮你把框里的代码，自动规范化洗成最标准的 JSON 格式
+                    updateJsonTextArea(); 
+                    
+                    alert('更新成功，野狗开始点菜吧！');
+                } else {
+                    alert('数据格式错误，顶层必须是一个数组 [...] ！');
+                }
+            } catch (e) {
+                alert('解析失败！请检查数据是否复制完整，确保括号配套。');
+            }
+        });
+
+        // 一键复制 JSON
+        copyBtn.addEventListener('click', () => {
+            jsonData.select();
+            document.execCommand('copy');
+            alert('全量 JSON 数据已复制到剪贴板！');
+        });
+
+        // 核心抽取与过滤逻辑
+        startBtn.addEventListener('click', () => {
+            clearInterval(timer);
+            
+            const maxBudget = parseInt(budgetSlider.value);
+            const isNoHotChecked = noHot.checked;
+            const isDongguanChecked = onlyDongguan.checked;
+
+            // 【条件过滤核心路由】
+            currentPool = restaurants.filter(item => {
+                // 1. 预算卡死
+                if (item.budget > maxBudget) return false;
+                
+                // 2. 不上火开关控制：开启时，口味只能选择清淡和正常，排除上火
+                if (isNoHotChecked && item.taste === '上火') return false;
+                
+                // 3. 东莞开关控制：开启时，地点必须是东莞，排除其他
+                if (isDongguanChecked && item.location !== '东莞') return false;
+                
+                return true;
+            });
+
+            if (currentPool.length === 0) {
+                alert('该筛选组合下没有符合条件的食物，请调整开关或拉大预算条！');
+                return;
+            }
+
+            // 抽取动画
+            let counter = 0;
+            startBtn.disabled = true;
+            const anim = setInterval(() => {
+                const randomItem = currentPool[Math.floor(Math.random() * currentPool.length)];
+                resultCard.classList.remove('hidden');
+                resultName.textContent = randomItem.name;
+                resultPrice.textContent = randomItem.budget;
+                resultLoc.textContent = randomItem.location;
+                resultTaste.textContent = randomItem.taste;
+                counter++;
+                if (counter > 10) {
+                    clearInterval(anim);
+                    startBtn.disabled = false;
+                    startCountdown(); // 开启潜意识倒计时
+                }
+            }, 50);
+        });
+
+        // 潜意识测试
+        function startCountdown() {
+            let seconds = 3;
+            countdown.textContent = seconds;
+            retryBtn.disabled = false;
+            
+            timer = setInterval(() => {
+                seconds--;
+                countdown.textContent = seconds;
+                if (seconds <= 0) {
+                    clearInterval(timer);
+                    countdown.parentNode.innerHTML = "🎉 祝您用餐愉快！";
+                }
+            }, 1000);
+        }
+
+        // 不行，重抽逻辑
+        retryBtn.addEventListener('click', () => {
+            clearInterval(timer);
+            const currentName = resultName.textContent;
+            currentPool = currentPool.filter(item => item.name !== currentName);
+            
+            if (currentPool.length === 0) {
+                alert('该筛选条件下所有符合的餐馆都被你拒绝了一遍，请重新点击开始抽取。');
+                return;
+            }
+            
+            const randomItem = currentPool[Math.floor(Math.random() * currentPool.length)];
+            resultName.textContent = randomItem.name;
+            resultPrice.textContent = randomItem.budget;
+            resultLoc.textContent = randomItem.location;
+            resultTaste.textContent = randomItem.taste;
+            
+            document.getElementById('countdownZone').innerHTML = `潜意识测试中... <span id="countdown" class="text-red-500 font-bold">3</span> 秒内可点击 <button id="retryBtn" class="bg-neutral-800 hover:bg-neutral-700 px-2 py-0.5 rounded text-white ml-1">不行，重抽</button>`;
+            document.getElementById('retryBtn').addEventListener('click', arguments.callee);
+            startCountdown();
+        });
+
+        // 运行
+        init();
+    </script>
+    <!-- 极客厂牌版权宣告 -->
+    <footer class="w-full text-center py-8 text-neutral-600 text-xs tracking-widest font-mono select-none">
+        © 2026 南华野狗出品 . ALL RIGHTS RESERVED.
+    </footer>
+</body>
+</html>
